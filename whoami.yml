@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: whoami
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: whoami-1
+  template:
+    metadata:
+      labels:
+        app: whoami-1
+        type: whoami
+    spec:
+      containers:
+        - name: whoami
+          image: larrycai/whoami
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: whoami-1
+spec:
+  type: NodePort
+  selector:
+    app: whoami-1
+  ports:
+  - port: 5000

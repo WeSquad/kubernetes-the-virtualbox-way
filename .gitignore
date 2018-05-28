@@ -1,0 +1,11 @@
+.vagrant
+.DS_*
+kubernetes
+encryption-config.yml
+admin.kubeconfig
+certs/*
+!certs/Makefile
+kubernetes.tgz
+etcd.tgz
+containerd.tgz
+cni.tgz

@@ -1,0 +1,28 @@
+[Unit]
+Description=etcd
+Documentation=https://github.com/coreos
+
+[Service]
+ExecStart=/usr/local/bin/etcd \
+  --name ETCD_NAME \
+  --cert-file=/etc/etcd/ssl/kubernetes-crt.pem \
+  --key-file=/etc/etcd/ssl/kubernetes-key.pem \
+  --peer-cert-file=/etc/etcd/ssl/kubernetes-crt.pem \
+  --peer-key-file=/etc/etcd/ssl/kubernetes-key.pem \
+  --trusted-ca-file=/etc/etcd/ssl/ca-crt.pem \
+  --peer-trusted-ca-file=/etc/etcd/ssl/ca-crt.pem \
+  --peer-client-cert-auth \
+  --client-cert-auth \
+  --initial-advertise-peer-urls https://INTERNAL_IP:2380 \
+  --listen-peer-urls https://INTERNAL_IP:2380 \
+  --listen-client-urls https://INTERNAL_IP:2379,https://127.0.0.1:2379 \
+  --advertise-client-urls https://INTERNAL_IP:2379 \
+  --initial-cluster-token cluster-0 \
+  --initial-cluster controller-1=https://192.168.26.11:2380,controller-2=https://192.168.26.12:2380,controller-3=https://192.168.26.13:2380 \
+  --initial-cluster-state new \
+  --data-dir=/var/lib/etcd
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,41 @@
+[Unit]
+Description=Kubernetes API Server
+Documentation=https://github.com/kubernetes/kubernetes
+
+[Service]
+ExecStart=/usr/local/bin/kube-apiserver \
+  --admission-control=Initializers,NamespaceLifecycle,NodeRestriction,LimitRanger,ServiceAccount,DefaultStorageClass,ResourceQuota \
+  --advertise-address=INTERNAL_IP \
+  --allow-privileged=true \
+  --apiserver-count=3 \
+  --audit-log-maxage=30 \
+  --audit-log-maxbackup=3 \
+  --audit-log-maxsize=100 \
+  --audit-log-path=/var/log/audit.log \
+  --authorization-mode=Node,RBAC \
+  --bind-address=INTERNAL_IP \
+  --client-ca-file=/var/lib/kubernetes/ssl/ca-crt.pem \
+  --enable-swagger-ui=true \
+  --etcd-cafile=/var/lib/kubernetes/ssl/ca-crt.pem \
+  --etcd-certfile=/var/lib/kubernetes/ssl/kubernetes-crt.pem \
+  --etcd-keyfile=/var/lib/kubernetes/ssl/kubernetes-key.pem \
+  --etcd-servers=https://192.168.26.11:2379,https://192.168.26.12:2379,https://192.168.26.13:2379 \
+  --event-ttl=1h \
+  --experimental-encryption-provider-config=/var/lib/kubernetes/encryption-config.yml \
+  --kubelet-preferred-address-types=InternalIP,Hostname,ExternalIP \
+  --kubelet-certificate-authority=/var/lib/kubernetes/ssl/ca-crt.pem \
+  --kubelet-client-certificate=/var/lib/kubernetes/ssl/kubernetes-crt.pem \
+  --kubelet-client-key=/var/lib/kubernetes/ssl/kubernetes-key.pem \
+  --kubelet-https=true \
+  --runtime-config=api/all,admissionregistration.k8s.io/v1alpha1=true \
+  --service-account-key-file=/var/lib/kubernetes/ssl/service-account-key.pem \
+  --service-cluster-ip-range=10.32.0.0/24 \
+  --service-node-port-range=30000-32767 \
+  --tls-cert-file=/var/lib/kubernetes/ssl/kubernetes-crt.pem \
+  --tls-private-key-file=/var/lib/kubernetes/ssl/kubernetes-key.pem \
+  --v=2
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

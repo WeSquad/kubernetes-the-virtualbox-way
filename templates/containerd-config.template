@@ -1,0 +1,2 @@
+[plugins.cri]
+  stream_server_address = "INTERNAL_IP"
