@@ -51,6 +51,16 @@ kubernetes-crt.pem: ca-crt.pem kubernetes.cnf
 	# Sign the kube-proxy CSR and generate cert
 	openssl x509 -req -extensions SAN -extfile kubernetes.cnf -in kubernetes-csr.pem -out kubernetes-crt.pem -CA ca-crt.pem -CAkey ca-key.pem -CAserial ca-crt.srl -sha256 -days 9999
 
+traefik.cnf:
+	cat /etc/ssl/openssl.cnf > traefik.cnf
+	echo "\n[SAN]\nsubjectAltName=DNS:traefik.local,DNS:dashboard.local" >> traefik.cnf
+
+traefik-crt.pem: ca-crt.pem traefik.cnf
+	# Generate a new 4096 bits RSA key and CSR for kubernetes API
+	openssl req -new -newkey rsa:4096 -nodes -subj "/C=LU/ST=Luxembourg/L=Luxembourg/O=kubernetes/CN=traefik" -keyout traefik-key.pem -out traefik-csr.pem -config traefik.cnf -reqexts SAN
+	# Sign the kube-proxy CSR and generate cert
+	openssl x509 -req -extensions SAN -extfile traefik.cnf -in traefik-csr.pem -out traefik-crt.pem -CA ca-crt.pem -CAkey ca-key.pem -CAserial ca-crt.srl -sha256 -days 9999
+
 node-1.cnf:
 	cat /etc/ssl/openssl.cnf > node-1.cnf
 	echo "\n[SAN]\nsubjectAltName=DNS:node-1,IP:192.168.26.21" >> node-1.cnf

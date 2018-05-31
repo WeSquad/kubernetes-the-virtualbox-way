@@ -1,8 +1,7 @@
 .vagrant
 .DS_*
-kubernetes
 encryption-config.yml
-admin.kubeconfig
+admin.*
 certs/*
 !certs/Makefile
 kubernetes.tgz

@@ -67,9 +67,6 @@ Vagrant.configure("2") do |config|
       controller.vm.provision "kube-scheduler.template",          type: "file", source: "./templates/kube-scheduler.template",          destination: "/home/vagrant/kube-scheduler.template"
       controller.vm.provision "kube-scheduler-config.template",   type: "file", source: "./templates/kube-scheduler-config.template",   destination: "/home/vagrant/kube-scheduler-config.template"
       controller.vm.provision "encryption-config.yml",            type: "file", source: "./encryption-config.yml",                      destination: "/home/vagrant/encryption-config.yml"
-      controller.vm.provision "rbac-apiserver-to-kubelet.yml",    type: "file", source: "./rbac-apiserver-to-kubelet.yml",              destination: "/home/vagrant/rbac-apiserver-to-kubelet.yml"
-      controller.vm.provision "kube-dns.yml",                     type: "file", source: "./kube-dns.yml",                               destination: "/home/vagrant/kube-dns.yml"
-      controller.vm.provision "kube-flannel.yml",                 type: "file", source: "./kube-flannel.yml",                           destination: "/home/vagrant/kube-flannel.yml"
 
       controller.vm.provider "virtualbox" do |v|
         v.name = "controller-#{i}"
@@ -136,11 +133,33 @@ Vagrant.configure("2") do |config|
   end
     
   config.vm.define "controller-3" do |controller|
+    controller.vm.provision "kube-dns.yml",                        type: "file", source: "./kube-dns.yml",                        destination: "/home/vagrant/kube-dns.yml"
+    controller.vm.provision "kube-flannel.yml",                    type: "file", source: "./kube-flannel.yml",                    destination: "/home/vagrant/kube-flannel.yml"
+    controller.vm.provision "kube-traefik-ingress-controller.yml", type: "file", source: "./kube-traefik-ingress-controller.yml", destination: "/home/vagrant/kube-traefik-ingress-controller.yml"
+    controller.vm.provision "rbac-apiserver-to-kubelet.yml",       type: "file", source: "./rbac-apiserver-to-kubelet.yml",       destination: "/home/vagrant/rbac-apiserver-to-kubelet.yml"
+    controller.vm.provision "rbac-admin-service-account.yml",      type: "file", source: "./rbac-admin-service-account.yml",      destination: "/home/vagrant/rbac-admin-service-account.yml"
+    controller.vm.provision "rbac-traefik-service-account.yml",    type: "file", source: "./rbac-traefik-service-account.yml",    destination: "/home/vagrant/rbac-traefik-service-account.yml"
+    controller.vm.provision "ingress-kubernetes-dashboard.yml",    type: "file", source: "./ingress-kubernetes-dashboard.yml",    destination: "/home/vagrant/ingress-kubernetes-dashboard.yml"
+    controller.vm.provision "ingress-traefik-dashboard.yml",       type: "file", source: "./ingress-traefik-dashboard.yml",       destination: "/home/vagrant/ingress-traefik-dashboard.yml"
+    controller.vm.provision "traefik-key.pem",                     type: "file", source: "./certs/traefik-key.pem",               destination: "/home/vagrant/traefik-key.pem"
+    controller.vm.provision "traefik-crt.pem",                     type: "file", source: "./certs/traefik-crt.pem",               destination: "/home/vagrant/traefik-crt.pem"
+
     controller.vm.provision "deploy", type: "shell", inline: <<-SCRIPT
       sleep 30
-      /usr/local/bin/kubectl apply -f /home/vagrant/rbac-apiserver-to-kubelet.yml
-      /usr/local/bin/kubectl apply -f /home/vagrant/kube-dns.yml
-      /usr/local/bin/kubectl apply -f /home/vagrant/kube-flannel.yml
+      kubectl -n kube-system create secret tls traefik-tls-cert --key=/home/vagrant/traefik-key.pem --cert=/home/vagrant/traefik-crt.pem
+
+      kubectl apply -f /home/vagrant/rbac-apiserver-to-kubelet.yml
+      kubectl apply -f /home/vagrant/rbac-admin-service-account.yml
+      kubectl apply -f /home/vagrant/rbac-traefik-service-account.yml
+
+      kubectl apply -f /home/vagrant/kube-flannel.yml
+      kubectl apply -f /home/vagrant/kube-dns.yml
+      kubectl apply -f /home/vagrant/kube-traefik-ingress-controller.yml
+      kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/master/src/deploy/recommended/kubernetes-dashboard.yaml
+
+      kubectl apply -f /home/vagrant/ingress-kubernetes-dashboard.yml
+      kubectl apply -f /home/vagrant/ingress-traefik-dashboard.yml
+      rm -rf /home/vagrant/*
     SCRIPT
   end
   
@@ -191,13 +210,13 @@ Vagrant.configure("2") do |config|
         rm -rf kubernetes.tgz cni.tgz containerd.tgz kubernetes
 
         # Generate kubelet kubeconfig
-        kubectl config set-cluster kubernetes --certificate-authority=ca-crt.pem --embed-certs=true --server=https://192.168.26.10 --kubeconfig=/var/lib/kubelet/kubeconfig
+        kubectl config set-cluster kubernetes --certificate-authority=ca-crt.pem --embed-certs=true --server=https://192.168.26.10:6443 --kubeconfig=/var/lib/kubelet/kubeconfig
         kubectl config set-credentials system:node:node-#{i} --client-certificate=node-crt.pem --client-key=node-key.pem --embed-certs=true --kubeconfig=/var/lib/kubelet/kubeconfig
         kubectl config set-context default --cluster=kubernetes --user=system:node:node-#{i} --kubeconfig=/var/lib/kubelet/kubeconfig
         kubectl config use-context default --kubeconfig=/var/lib/kubelet/kubeconfig
 
         # Generate kube-proxy kubeconfig
-        kubectl config set-cluster kubernetes --certificate-authority=ca-crt.pem --embed-certs=true --server=https://192.168.26.10 --kubeconfig=/var/lib/kube-proxy/kubeconfig
+        kubectl config set-cluster kubernetes --certificate-authority=ca-crt.pem --embed-certs=true --server=https://192.168.26.10:6443 --kubeconfig=/var/lib/kube-proxy/kubeconfig
         kubectl config set-credentials kube-proxy --client-certificate=kube-proxy-crt.pem --client-key=kube-proxy-key.pem --embed-certs=true --kubeconfig=/var/lib/kube-proxy/kubeconfig
         kubectl config set-context default --cluster=kubernetes --user=kube-proxy --kubeconfig=/var/lib/kube-proxy/kubeconfig
         kubectl config use-context default --kubeconfig=/var/lib/kube-proxy/kubeconfig

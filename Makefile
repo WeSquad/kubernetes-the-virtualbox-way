@@ -11,7 +11,7 @@ default: vagrant
 prerequisites: certs/.done kubernetes.tgz etcd.tgz containerd.tgz cni.tgz encryption-config.yml
 
 vagrant: prerequisites kubernetes.tgz etcd.tgz containerd.tgz cni.tgz encryption-config.yml
-	vagrant up haproxy controller-1 controller-2 controller-3 node-1 node-2  node-3
+	vagrant up haproxy controller-1 controller-2 controller-3 node-1 node-2 node-3
 
 certs/.done:
 	make -C certs
@@ -43,10 +43,14 @@ encryption-config.yml:
 	sed -e 's/ENCRYPTION_KEY/${ENCRYPTION_KEY}/' ./templates/encryption-config.template > ./encryption-config.yml
 
 admin.kubeconfig: certs
-	kubectl config set-cluster kubernetes --certificate-authority=./certs/ca-crt.pem --embed-certs=true --server=https://192.168.26.10 --kubeconfig=admin.kubeconfig
+	kubectl config set-cluster kubernetes --certificate-authority=./certs/ca-crt.pem --embed-certs=true --server=https://192.168.26.10:6443 --kubeconfig=admin.kubeconfig
 	kubectl config set-credentials kubernetes-admin --client-certificate=./certs/admin-crt.pem --client-key=./certs/admin-key.pem --embed-certs=true --kubeconfig=admin.kubeconfig
 	kubectl config set-context default --cluster=kubernetes --user=kubernetes-admin --kubeconfig=admin.kubeconfig
 	kubectl config use-context default --kubeconfig=admin.kubeconfig
+	echo "Copy the admin.kubeconfig to ~/.kube/config"
+
+admin.token: admin.kubeconfig
+	kubectl get secret -n kube-system $$(kubectl get sa -n kube-system admin -o jsonpath='{.secrets[0].name}') -o jsonpath='{.data.token}' | base64 -D > admin.token
 
 clean:
 	vagrant destroy -f haproxy controller-1 controller-2 controller-3 node-1 node-2 node-3

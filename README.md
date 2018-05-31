@@ -56,11 +56,13 @@ This Vagrant lab aims at creating a HA Kubernetes cluster over Vagrant.
 
 ## HAProxy
 
-HAProxy serves the sole purpose of load balancing the 3 `kube-apiserver` we are going to be running using simple tcp load balancing with a check.
+HAProxy serves the sole purpose of load balancing the the API to the 3 `kube-apiserver` and the Traefik load balancers.
+
+We are going to be running using simple tcp load balancing with a check for all the backends.
 
 While this works fine, the config is very basic and will need to be tweaked for a more serious environment.
 
-HAProxy's IP address is `192.168.26.10`. The `kube-apiservers` are exposed over port 443 and HAProxy stats UI is exposed over port 9000.
+HAProxy's IP address is `192.168.26.10`. The `kube-apiservers` are exposed over port 6443, HAProxy stats UI is exposed over port 9000, and Traefiks over 80 and 443.
 
 ## Controllers
 
@@ -250,11 +252,13 @@ This project is my first time using Vagrant, so the `Vagrantfile` is pretty stra
 
 ## HAProxy
 
-HAProxy is configured as simple TCP load balancer. There are 3 backends (the 3 `kube-apiserver`), if their port 6443 is opened (the default HTTPS port for `kube-apiserver`), the HAProxy will forward TCP traffic to them using a round robin method. If one of the `kube-apiserver` is down, HAProxy will forward to the others available ones.
+HAProxy is configured as simple TCP load balancer. There are 3 backends (the 3 `kube-apiserver`), if their port 6443 is opened (the default HTTPS port for `kube-apiserver`), HAProxy will forward traffic to them using a round robin method. If one of the `kube-apiserver` is down, HAProxy will forward to the others available ones.
+
+The same way, there are 3 backends (the 3 nodes that will have the traefik ingress controller), if their port 80 anad 443 are opened, HAProxy will forward traffic to them using a round robin method. If one of the Traefiks is down, HAProxy will forward to the others available ones.
 
 The command `vagrant up haproxy` will bring up a Debian stretch machine, install HAProxy, inject the config and start the service.
 
-> :information_source: The `haproxy.cfg` file contains the IP addresses of the `kube-apiserver`s. If you are not running on subnet `192.168.26.0/24` you need to change the IP addresses in the `backend http_back_kube` section.
+> :information_source: The `haproxy.cfg` file contains the IP addresses of the `kube-apiserver`s and nodes. If you are not running on subnet `192.168.26.0/24` you need to change the IP addresses in the `backend http_back_kube` section.
 
 For now, you can check the stats and see the backends are all down in your browser with http://192.168.26.10:9000
 
@@ -536,12 +540,21 @@ When vagrant provisions `controller-3`, there is an extra script that is not run
 
 ```yml
 sleep 30
-/usr/local/bin/kubectl apply -f /home/vagrant/rbac-apiserver-to-kubelet.yml
-/usr/local/bin/kubectl apply -f /home/vagrant/kube-dns.yml
-/usr/local/bin/kubectl apply -f /home/vagrant/kube-flannel.yml
+kubectl -n kube-system create secret tls traefik-tls-cert --key=/home/vagrant/traefik-key.pem --cert=/home/vagrant/traefik-crt.pem
+kubectl apply -f /home/vagrant/rbac-apiserver-to-kubelet.yml
+kubectl apply -f /home/vagrant/rbac-admin-service-account.yml
+kubectl apply -f /home/vagrant/rbac-traefik-service-account.yml
+kubectl apply -f /home/vagrant/kube-flannel.yml
+kubectl apply -f /home/vagrant/kube-dns.yml
+kubectl apply -f /home/vagrant/kube-traefik-ingress-controller.yml
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/master/src/deploy/recommended/kubernetes-dashboard.yaml
+kubectl apply -f /home/vagrant/ingress-kubernetes-dashboard.yml
+kubectl apply -f /home/vagrant/ingress-traefik-dashboard.yml
 ```
 
-This script will deploy the [DNS addon](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/), together with [flannel](https://github.com/coreos/flannel) and some RBAC roles that will allow `kube-apiserver` to talk to `kubelet`s. This is required otherwise `kubectl logs` and `kubectl exec` will return access denied.
+This script will deploy the [DNS addon](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/), together with [flannel](https://github.com/coreos/flannel) and some RBAC that will allow `kube-apiserver` to talk to `kubelet`s. This is required otherwise `kubectl logs` and `kubectl exec` will return access denied.
+
+The will also create RBAC for traefik and deploy it as an ingress controller daemonset on all nodes in order to serve the Traefik admin UI and Kubernetes Dashboard.
 
 > :information_source: You cannot simply `kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml` to install `flannel` with VirtualBox.
 
@@ -786,7 +799,17 @@ For convenience, create the admin kubeconfig and copy it where it belongs. Be ca
 
 ```bash
 make admin.kubeconfig
+make admin.token
 cp admin.kubeconfig ~/.kube/config
 ```
 
 You can now run the [smoke test](https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/13-smoke-test.md) except for gVisor which this cluster is not using yet.
+
+Alternatively, you can try the running applications by adding the following to your `/etc/hosts`:
+
+```
+192.168.26.10     traefik.local
+192.168.26.10     dashboard.local
+```
+
+Then open your browser to one of those addresses to get respectively the Traefik dashboard, and the Kubernetes dashboard.
