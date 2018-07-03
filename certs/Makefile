@@ -2,7 +2,7 @@ default: all
 
 .PHONY: all clean
 
-all: ca-crt.pem admin-crt.pem kubernetes-crt.pem kube-controller-manager-crt.pem kube-scheduler-crt.pem service-account-crt.pem kube-proxy-crt.pem node-1-crt.pem node-2-crt.pem node-3-crt.pem .done
+all: ca-crt.pem admin-crt.pem kubernetes-crt.pem kube-controller-manager-crt.pem kube-scheduler-crt.pem service-account-crt.pem kube-proxy-crt.pem node-1-crt.pem node-2-crt.pem node-3-crt.pem traefik-crt.pem .done
 
 .done:
 	touch .done

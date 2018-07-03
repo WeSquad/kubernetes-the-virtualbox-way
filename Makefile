@@ -1,7 +1,7 @@
 ENCRYPTION_KEY := $(shell head -c 32 /dev/urandom | base64 | tr '\/' 'x')
-ETCD_VERSION := v3.3.5
-KUBERNETES_VERSION := v1.10.3
-CONTAINERD_VERSION := 1.1.0
+ETCD_VERSION := v3.3.8
+KUBERNETES_VERSION := v1.10.5
+CONTAINERD_VERSION := 1.1.1-rc.2
 CNI_VERSION := v0.7.1
 
 default: vagrant
